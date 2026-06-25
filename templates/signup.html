@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="auth-style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink:     '#101014',   // primary text
+            surface: '#F6F6F8',   // page background
+            panel:   '#FFFFFF',   // card background
+            border:  '#E3E3E9',
+            muted:   '#9B9BA6',
+            ghost:   '#6B6B76',
+            sky:     '#1D9BF0',
+            skyDim:  '#0D7ACC',
+            pulse:   '#0FBF8F',   // deepened mint for AA contrast on white
+            warn:    '#E5484D',
+          },
+          fontFamily: {
+            display: ['Syne', 'sans-serif'],
+            body:    ['Inter', 'sans-serif'],
+            mono:    ['DM Mono', 'monospace'],
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+body { background: #FFF; font-family: 'Inter', sans-serif; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #E3E3E9; border-radius: 4px; }
+
+    .glow-bg {
+      background:
+        radial-gradient(55% 45% at 20% 0%, rgba(29,155,240,0.07) 0%, rgba(246,246,248,0) 70%),
+        radial-gradient(45% 40% at 90% 100%, rgba(15,191,143,0.08) 0%, rgba(246,246,248,0) 70%);
+    }
+
+    .grad-text {
+      background: linear-gradient(100deg, #0FBF8F 0%, #1D9BF0 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+
+    .post-btn { background: linear-gradient(135deg, #1D9BF0 0%, #0D7ACC 100%); box-shadow: 0 8px 20px -8px rgba(29,155,240,0.45); transition: filter .2s, transform .1s, box-shadow .2s; }
+    .post-btn:hover { filter: brightness(1.07); box-shadow: 0 10px 24px -8px rgba(29,155,240,0.55); }
+    .post-btn:active { transform: scale(0.97); }
+    .post-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: none; box-shadow: none; }
+
+    .schedule-btn { border: 1.5px solid #E3E3E9; transition: border-color .2s, color .2s, background .2s; }
+    .schedule-btn:hover { border-color: #0FBF8F; color: #0FBF8F; background: rgba(15,191,143,0.05); }
+
+    .field { background: #FFFFFF; border: 1px solid #E3E3E9; color: #101014; transition: border-color .15s, box-shadow .15s; }
+    .field::placeholder { color: #9B9BA6; }
+    .field:focus { outline: none; border-color: #0FBF8F; box-shadow: 0 0 0 3px rgba(15,191,143,0.12); }
+    .field.err { border-color: #E5484D; }
+
+    .auth-tab { transition: color .15s, border-color .15s; color: #6B6B76; }
+    .auth-tab.active { color: #101014; border-bottom: 2px solid #0FBF8F; }
+
+    .strength-seg { background: #E3E3E9; transition: background .25s; }
+    .strength-seg.on-1 { background: #E5484D; }
+    .strength-seg.on-2 { background: #F0A93B; }
+    .strength-seg.on-3 { background: #0FBF8F; }
+
+    .status-dot { animation: blink 2s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+    .checkbox { accent-color: #0FBF8F; }
+
+  </style>
+</head>
+<body>
+    <!-- ─── TOP BAR ───────────────────────────────────────────── -->
+    <header class="flex items-center justify-between px-4 sm:px-8 py-5">
+      <a href="#" class="flex items-center gap-2.5">
+        <img src="{{ url_for('static', filename='images/logo-blue.png') }}" alt="logo" style="width:50px">
+        <span class="font-display font-800 text-lg tracking-tight text-ink">MaskMan</span>
+      </a>
+      
+    </header>
+
+    <main class="flex-1 flex items-center justify-center px-4 py-8">
+      <div class="w-full max-w-sm">
+        <div class="card-shadow rounded-2xl">
+
+          <div class="mb-7">
+            <h2 class="font-display text-2xl sm:text-3xl font-800 leading-tight text-ink" id="form-heading">Create account</h2>
+            <!--<p class="text-ghost text-sm mt-1.5" id="form-subheading">Signup your account to post content.</p>-->
+            <p class="text-sm text-ghost" id="switch-line">
+              Already have an account?
+              <a href="/login" class="text-pulse font-500 hover:underline">Login</a>
+            </p>
+          </div>
+
+
+          <!--<button onclick="handleX()" class="schedule-btn w-full flex items-center justify-center gap-2 text-sm font-500 text-ink py-3 rounded-xl">
+             Continue with <i class="fa-brands fa-x-twitter"></i>
+          </button>
+
+          <div class="flex items-center gap-3 my-6">
+            <div class="flex-1 h-px bg-border"></div>
+            <span class="text-xs text-muted font-mono">or</span>
+            <div class="flex-1 h-px bg-border"></div>
+          </div>-->
+
+          {% if errors %}
+          <div style="border-left: solid 5px rgb(247, 6, 6); border-radius: 5px;" class="rounded-x1 p-3 bg-rose-500/10 text-rose-300 text-sm">
+            <ul >
+            {% for e in errors %}
+              <li style="font-size: 13px;color: rgb(255, 0, 0);">{{e}}</li>
+            {% endfor %}
+            </ul>
+          </div>
+          <br>
+          {% endif %}
+    <!-- SIGNUP FORM -->
+
+          <form id="form-signup" class="tab-panel flex-col gap-4" method="post" action="/register-user">
+            <div>
+              <label class="text-xs text-ghost block mb-1.5">Username</label>
+              <input type="text" name="name" required placeholder="Tat"
+                class="field w-full rounded-lg px-3.5 py-3 text-sm" />
+            </div>
+
+            <div class="mt-5">
+              <label class="text-xs text-ghost block mb-1.5">Email</label>
+              <input type="email" name="email" required placeholder="you@example.com"
+                class="field w-full rounded-lg px-3.5 py-3 text-sm" />
+            </div>
+
+            <div class="mt-5">
+              <label class="text-xs text-ghost block mb-1.5">Password</label>
+              <div class="relative">
+                <input type="password" name="password" required placeholder="At least 8 characters" id="signup-password" class="field w-full rounded-lg px-3.5 py-3 text-sm pr-10" />
+                <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-ghost hover:text-ink text-sm transition-colors">
+                  <i class="fa-regular fa-eye"></i>
+                </button>
+              </div>
+              
+            </div>
+
+            <!--<label class="flex items-start gap-2.5 text-xs text-ghost cursor-pointer select-none">
+              <input type="checkbox" required class="checkbox w-4 h-4 rounded mt-0.5" />
+              I agree to the <a href="#" class="text-ink hover:text-pulse transition-colors underline">Terms</a> and <a href="#" class="text-ink hover:text-pulse transition-colors underline">Privacy Policy</a>
+            </label>-->
+
+            <button type="submit" class="post-btn mt-5 flex items-center justify-center gap-2 text-sm font-600 text-white py-3 rounded-xl w-full">
+              <span id="signup-btn-text">Create account</span>
+              <i class="fa-solid fa-circle-notch fa-spin hidden" id="signup-spinner"></i>
+            </button>
+          </form>
+
+          </div>
+    </main>
+
+    <script src="auth-script.js"></script>
+</body>
+</html>

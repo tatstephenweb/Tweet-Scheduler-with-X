@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Poster — X Publishing Assistant</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="style.css">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink:     '#0D0D0F',
+            surface: '#111114',
+            panel:   '#18181C',
+            border:  '#27272E',
+            muted:   '#52525E',
+            ghost:   '#A0A0B0',
+            sky:     '#1D9BF0',
+            skyDim:  '#155E8F',
+            pulse:   '#4DFFC3',
+            warn:    '#FF6B6B',
+          },
+          fontFamily: {
+            display: ['Syne', 'sans-serif'],
+            body:    ['Inter', 'sans-serif'],
+            mono:    ['DM Mono', 'monospace'],
+          },
+        }
+      }
+    }
+  </script>
+<style>
+      * { box-sizing: border-box; }
+    body { background: #0D0D0F; font-family: 'Inter', sans-serif; }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #27272E; border-radius: 4px; }
+
+    /* Signature glow on the compose textarea */
+    .compose-area:focus {
+      outline: none;
+      box-shadow: 0 0 0 1.5px #4DFFC3, 0 0 24px 0 rgba(77,255,195,0.08);
+    }
+
+    /* Character ring */
+    .char-ring {
+      --pct: 0%;
+      background: conic-gradient(#4DFFC3 var(--pct), #27272E var(--pct));
+      border-radius: 50%;
+    }
+    .char-ring.warn-zone { background: conic-gradient(#FF6B6B var(--pct), #27272E var(--pct)); }
+
+    /* Tab underline */
+    .tab-btn.active { color: #4DFFC3; border-bottom: 2px solid #4DFFC3; }
+
+    /* Sidebar nav item */
+    .nav-item { transition: background 0.15s, color 0.15s; }
+    .nav-item:hover, .nav-item.active { background: #18181C; color: #fff; }
+    .nav-item.active .nav-icon { color: #4DFFC3; }
+
+    /* Status dot pulse */
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .status-dot { animation: blink 2s ease-in-out infinite; }
+
+    /* Scheduled card hover */
+    .sched-card { transition: border-color 0.2s, background 0.2s; }
+    .sched-card:hover { border-color: #52525E; background: #1E1E23; }
+
+    /* Toast */
+    #toast { transition: opacity 0.3s, transform 0.3s; }
+    #toast.hidden { opacity: 0; transform: translateY(8px); pointer-events: none; }
+
+    /* Slide in tabs content */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Post now button shimmer */
+    .post-btn {
+      background: linear-gradient(135deg, #1D9BF0 0%, #0D7ACC 100%);
+      transition: filter 0.2s, transform 0.1s;
+    }
+    .post-btn:hover { filter: brightness(1.12); }
+    .post-btn:active { transform: scale(0.97); }
+
+    .schedule-btn {
+      border: 1.5px solid #27272E;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .schedule-btn:hover { border-color: #4DFFC3; color: #4DFFC3; }
+
+    /* Thread line connector */
+</style>
+
+</head>
+<body class="bg-surface text-white min-h-screen flex">
+
+  <!-- ─── SIDEBAR -->
+  <aside class="hidden md:flex flex-col w-56 shrink-0 border-r border-border bg-surface h-screen sticky top-0">
+
+    <!-- Logo -->
+    <div class="px-5 py-5 border-b border-border flex items-center gap-2.5">
+      <img src="{{ url_for('static', filename='images/logo-white.png') }}" alt="logo" style="width:40px">
+      <span class="font-display font-800 text-lg tracking-tight text-white">MaskMan</span>
+    </div>
+
+    <!-- Account chip -->
+    <div class="px-4 py-3 border-b border-border flex items-center gap-2.5">
+      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-sky to-pulse flex items-center justify-center text-1x font-mono font-500 text-ink shrink-0">
+        {{user['username'][0].upper()}}
+      </div>
+      <div class="min-w-0">
+        <p class="text-sm font-500 truncate leading-none mb-0.5">{{user['username'].capitalize()}}</p>
+        <span class="flex items-center gap-1 text-xs text-ghost font-mono">
+          {{user['email'].split('@')[0]}}
+        </span>
+      </div>
+    </div>
+
+    <!-- Nav -->
+    <nav class="border-b border-border flex-1 px-2 py-3 flex flex-col gap-0.5">
+      <button onclick="setView('compose')" class="nav-item active w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-500" id="nav-compose">
+        <i class="nav-icon fa-regular fa-pen-to-square text-pulse w-4"></i> Compose
+      </button>
+      <button onclick="setView('scheduled')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-500 text-ghost" id="nav-scheduled">
+        <i class="nav-icon fa-regular fa-clock w-4"></i> Scheduled
+        <span class="ml-auto bg-border text-ghost text-xs font-mono px-1.5 py-0.5 rounded" id="sched-count">3</span>
+      </button>
+      <!--<button onclick="setView('drafts')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-500 text-ghost" id="nav-drafts">
+        <i class="nav-icon fa-regular fa-file-lines w-4"></i> Drafts
+        <span class="ml-auto bg-border text-ghost text-xs font-mono px-1.5 py-0.5 rounded">1</span>
+      </button>-->
+      <button onclick="setView('published')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-500 text-ghost" id="nav-published">
+        <i class="nav-icon fa-regular fa-circle-check w-4"></i> Published
+      </button>
+
+      <div class="flex-1 px-2 py-3 flex flex-col">
+      <a href="/link-x" class="active w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-500 text-center bg-gradient-to-br from-sky to-pulse text-center" style="font-size: 13px;color:black">
+        Connect to <i class="nav-icon fa-brands fa-x-twitter w-4"></i>
+      </a>
+    </div>
+    </nav>
+
+    <br>
+    <!-- Stats strip -->
+    <!--<div class="px-4 py-4 border-t border-border">
+      <p class="text-xs text-muted font-mono uppercase tracking-widest mb-3">This month</p>
+      <div class="grid grid-cols-2 gap-2">
+        <div class="bg-panel rounded-lg p-2.5">
+          <p class="font-display text-xl font-700 text-white leading-none">24</p>
+          <p class="text-xs text-ghost mt-1">Posted</p>
+        </div>
+        <div class="bg-panel rounded-lg p-2.5">
+          <p class="font-display text-xl font-700 text-pulse leading-none">1.5k</p>
+          <p class="text-xs text-ghost mt-1">Left</p>
+        </div>
+      </div>
+    </div>-->
+
+    <div class="flex-1 px-2 py-3 flex flex-col">
+      <a href="/logout" class="active w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-500 text-center bg-rose-500/10" style="font-size: 13px;color: rgb(255, 71, 71);">
+        <i class="nav-icon fas fa-sign-out-alt w-4"></i> Logout
+      </a>
+    </div>
+  </aside>
+
+  <!-- ─── MAIN ─────────────────────────────────────────────────── -->
+  <main class="flex-1 flex flex-col min-h-screen overflow-y-auto">
+
+    <!-- Mobile topbar -->
+    <header class="md:hidden flex items-center justify-between px-4 py-3.5 border-b border-border sticky top-0 bg-ink z-10">
+      <div class="flex items-center gap-2">
+        <img src="{{ url_for('static', filename='images/logo-white.png') }}" alt="logo" style="width:30px">
+        <span class="font-display font-800 text-base">MaskMan</span>
+      </div>
+      <button onclick="toggleMobileMenu()" class="text-ghost text-lg" id="menu-btn">
+        <i class="fa-solid fa-bars" id="menu-icon"></i>
+      </button>
+    </header>
+
+    <!-- Mobile menu drawer -->
+    <div id="mobile-menu" class="hidden md:hidden bg-surface border-b border-border px-4 py-3 flex flex-col gap-1">
+      <div class="px-0 py-3 border-b border-border flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-1x font-mono font-500 text-ink shrink-0">
+          {{user['username'][0].upper()}}
+        </div>
+        <div class="min-w-0">
+          <p class="text-sm font-500 truncate leading-none mb-0.5">{{user['username'].capitalize()}}</p>
+          <span class="flex items-center gap-1 text-xs text-ghost font-mono">
+            {{user['email'].split('@')[0]}}
+            <a href="/logout" class="flex items-center ml-2 gap-3 px-2 py-1.5 rounded-lg font-500 text-red-400 bg-rose-500/10 mt-1">
+              <i class="fas fa-sign-out-alt"></i> <!--Logout-->
+            </a>
+          </span>
+        </div>
+      </div>
+      <button onclick="setView('compose'); closeMobileMenu()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-500 text-ghost hover:text-white hover:bg-panel w-full text-left">
+        <i class="fa-regular fa-pen-to-square w-4 text-pulse"></i> Compose
+      </button>
+      <button onclick="setView('scheduled'); closeMobileMenu()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-500 text-ghost hover:text-white hover:bg-panel w-full text-left">
+        <i class="fa-regular fa-clock w-4"></i> Scheduled
+      </button>
+      <button onclick="setView('published'); closeMobileMenu()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-500 text-ghost hover:text-white hover:bg-panel w-full text-left">
+        <i class="fa-regular fa-circle-check w-4"></i> Published
+      </button>
+
+      <div class="border-b border-border"></div>
+      <a href="/connect-x" class="flex mt-2 items-center text-center gap-3 px-3 py-2.5 rounded-lg text-sm font-500 bg-gradient-to-br from-sky to-pulse text-black mt-1">
+        Connect to <i class="fa-brands fa-x-twitter w-4 ml-1"></i>
+      </a>
+
+    </div>
+
+    <!-- ══ VIEW: COMPOSE ════════════════════════════════════════ -->
+    <section id="view-compose" class="view-section flex-1 p-4 md:p-8 max-w-2xl w-full mx-auto">
+
+      <!-- Header -->
+      <div class="mb-6">
+        <h1 class="font-display text-2xl font-800 leading-tight">New tweet</h1>
+        <p class="text-ghost text-sm mt-1">Write, schedule, or post immediately.</p>
+      </div>
+
+      <!-- Tabs -->
+      <!--<div class="flex gap-0 border-b border-border mb-5">
+        <button onclick="setTab('single')" class="tab-btn active px-4 py-2.5 text-sm font-500 text-white border-b-2 border-pulse -mb-px" id="tab-single">Single tweet</button>
+        <button onclick="setTab('thread')" class="tab-btn px-4 py-2.5 text-sm font-500 text-ghost -mb-px" id="tab-thread">Thread</button>
+      </div>-->
+
+      <!-- Single tweet panel -->
+      <form method="post" action="">
+      <div id="panel-single" class="tab-panel active">
+
+        <!-- Compose box -->
+        <div class="bg-panel border border-border rounded-xl p-4 mb-4">
+          <div class="flex gap-3">
+            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-sky to-pulse flex items-center justify-center text-xs font-mono font-500 text-ink shrink-0 mt-0.5">T</div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-500 mb-2">@tat_codes</p>
+            
+              <textarea
+                id="tweet-text"
+                class="compose-area w-full bg-transparent text-white text-base resize-none placeholder-muted border border-border rounded-lg p-3 font-body leading-relaxed min-h-[110px]"
+                placeholder="What's on your mind?"
+                maxlength="280"
+                oninput="updateChar()"
+                required
+              ></textarea>
+
+              <!-- Char counter + media row -->
+              <div class="flex items-center justify-between mt-3">
+                <!--<div class="flex items-center gap-3 text-ghost">
+                  <button class="hover:text-sky transition-colors text-lg" title="Add image"><i class="fa-regular fa-image"></i></button>
+                  <button class="hover:text-sky transition-colors text-lg" title="Add GIF"><i class="fa-solid fa-film"></i></button>
+                  <button class="hover:text-sky transition-colors text-lg" title="Add link"><i class="fa-solid fa-link"></i></button>
+                  <button onclick="aiDraft()" class="hover:text-pulse transition-colors text-lg" title="AI assist"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
+                </div>-->
+                <div class="flex items-center gap-2.5">
+                  <!-- Ring -->
+                  <div id="char-ring" class="char-ring w-6 h-6 relative">
+                    <div class="absolute inset-1 bg-panel rounded-full"></div>
+                  </div>
+                  <span id="char-count" class="text-xs font-mono text-ghost">280</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Schedule row -->
+        <div id="schedule-row" class="bg-panel border border-border rounded-xl p-4 mb-5 hidden">
+          <p class="text-xs font-mono text-muted uppercase tracking-widest mb-3">Schedule for</p>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-ghost block mb-1.5">Date</label>
+              <input type="date" id="sched-date" required
+                class="w-full bg-ink border border-border rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-sky" />
+            </div>
+            <div>
+              <label class="text-xs text-ghost block mb-1.5">Time</label>
+              <input type="time" id="sched-time" placeholder="12:00 pm" required value="09:00"
+                class="w-full bg-ink border border-border rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-sky" />
+            </div>
+          </div>
+          <br>
+        </div>
+        <!-- Actions -->
+        <div class="flex gap-3">
+          <!--<button onclick="toggleSchedule()" id="schedule-toggle-btn"
+            class="schedule-btn flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-500 text-ghost bg-transparent">
+            <i class="fa-regular fa-clock"></i> <span id="sched-btn-label">Schedule</span>
+          </button>-->
+          <button
+            class="post-btn flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-600 text-white">
+            Add now
+          </button>
+        </div>
+      </form>
+
+        <!-- AI suggestion box -->
+        <div id="ai-box" class="hidden mt-5 bg-panel border border-pulse/30 rounded-xl p-4">
+          <div class="flex items-center gap-2 mb-3">
+            <i class="fa-solid fa-wand-magic-sparkles text-pulse text-sm"></i>
+            <p class="text-xs font-mono text-pulse uppercase tracking-widest">AI suggestion</p>
+          </div>
+          <p id="ai-suggestion" class="text-sm text-white leading-relaxed"></p>
+          <div class="flex gap-2 mt-3">
+            <button onclick="useAiSuggestion()" class="text-xs font-500 text-pulse border border-pulse/40 rounded-lg px-3 py-1.5 hover:bg-pulse/10 transition-colors">Use this</button>
+            <button onclick="document.getElementById('ai-box').classList.add('hidden')" class="text-xs font-500 text-ghost border border-border rounded-lg px-3 py-1.5 hover:border-muted transition-colors">Dismiss</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Thread panel -->
+      <div id="panel-thread" class="tab-panel">
+        <div id="thread-container" class="flex flex-col gap-0">
+          <!-- Thread tweet 1 -->
+          <div class="flex gap-3 thread-item">
+            <div class="flex flex-col items-center">
+              <div class="w-9 h-9 rounded-full bg-gradient-to-br from-sky to-pulse flex items-center justify-center text-xs font-mono font-500 text-ink shrink-0">T</div>
+              <div class="thread-connector flex-1 mt-2 ml-px" style="min-height:24px"></div>
+            </div>
+            <div class="flex-1 pb-3">
+              <p class="text-sm font-500 mb-2">@tat_codes</p>
+              <textarea class="compose-area w-full bg-transparent text-white text-base resize-none placeholder-muted border border-border rounded-lg p-3 font-body leading-relaxed min-h-[80px]" placeholder="Start your thread…" maxlength="280"></textarea>
+              <div class="flex justify-end mt-1.5">
+                <span class="text-xs font-mono text-muted">280</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Thread tweet 2 -->
+          <div class="flex gap-3 thread-item">
+            <div class="flex flex-col items-center">
+              <div class="w-9 h-9 rounded-full bg-gradient-to-br from-sky to-pulse flex items-center justify-center text-xs font-mono font-500 text-ink shrink-0">T</div>
+              <div class="thread-connector flex-1 mt-2 ml-px" style="min-height:24px"></div>
+            </div>
+            <div class="flex-1 pb-3">
+              <p class="text-sm font-500 mb-2">@tat_codes</p>
+              <textarea class="compose-area w-full bg-transparent text-white text-base resize-none placeholder-muted border border-border rounded-lg p-3 font-body leading-relaxed min-h-[80px]" placeholder="Continue…" maxlength="280"></textarea>
+              <div class="flex justify-end mt-1.5">
+                <span class="text-xs font-mono text-muted">280</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button onclick="addThreadTweet()" class="mt-2 w-full flex items-center gap-2 text-sm text-ghost hover:text-pulse transition-colors py-2 font-500">
+          <i class="fa-solid fa-plus text-xs"></i> Add tweet to thread
+        </button>
+
+        <div class="flex gap-3 mt-5">
+          <button class="schedule-btn flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-500 text-ghost bg-transparent">
+            <i class="fa-regular fa-clock"></i> Schedule thread
+          </button>
+          <button onclick="showToast('Thread posted!')" class="post-btn flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-600 text-white">
+            <i class="fa-brands fa-x-twitter"></i> Post thread
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ VIEW: SCHEDULED ══════════════════════════════════════ -->
+    <section id="view-scheduled" class="view-section hidden flex-1 p-4 md:p-8 max-w-2xl w-full mx-auto">
+      <div class="mb-6 flex items-start justify-between">
+        <div>
+          <h1 class="font-display text-2xl font-800">Scheduled</h1>
+          <p class="text-ghost text-sm mt-1">3 tweets queued to post.</p>
+        </div>
+        <button onclick="setView('compose')" class="post-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-500 text-white">
+          <i class="fa-solid fa-plus"></i> New
+        </button>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <!-- Card 1 -->
+        <div class="sched-card bg-panel border border-border rounded-xl p-4">
+          <div class="flex gap-3">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-sky to-pulse flex items-center justify-center text-xs font-mono text-ink shrink-0">T</div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between mb-1.5">
+                <p class="text-sm font-500">@tat_codes</p>
+                <span class="text-xs font-mono text-muted flex items-center gap-1">
+                  <i class="fa-regular fa-clock"></i> Jun 17 · 9:00 AM
+                </span>
+              </div>
+              <p class="text-sm text-white leading-relaxed">Just deployed Quizzer v2 with multi-file support 🚀 Upload your lecture slides, get smart quiz questions instantly. Built with Flask + Groq LLM.</p>
+              <div class="flex items-center gap-3 mt-3">
+                <button class="text-xs text-ghost hover:text-sky flex items-center gap-1.5 transition-colors"><i class="fa-regular fa-pen-to-square"></i> Edit</button>
+                <button class="text-xs text-ghost hover:text-warn flex items-center gap-1.5 transition-colors"><i class="fa-regular fa-trash-can"></i> Delete</button>
+                <button onclick="showToast('Posted immediately!')" class="ml-auto text-xs text-ghost hover:text-pulse flex items-center gap-1.5 transition-colors font-mono">Post now →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="sched-card bg-panel border border-border rounded-xl p-4">
+          <div class="flex gap-3">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-sky to-pulse flex items-center justify-center text-xs font-mono text-ink shrink-0">T</div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between mb-1.5">
+                <p class="text-sm font-500">@tat_codes</p>
+                <span class="text-xs font-mono text-muted flex items-center gap-1">
+                  <i class="fa-regular fa-clock"></i> Jun 18 · 7:00 AM
+                </span>
+              </div>
+              <p class="text-sm text-white leading-relaxed">Thread: Everything I learned building my first PWA during SIWES 🧵</p>
+              <div class="flex items-center gap-2 mt-2">
+                <span class="text-xs font-mono text-muted bg-border px-2 py-0.5 rounded">Thread · 5 tweets</span>
+              </div>
+              <div class="flex items-center gap-3 mt-3">
+                <button class="text-xs text-ghost hover:text-sky flex items-center gap-1.5 transition-colors"><i class="fa-regular fa-pen-to-square"></i> Edit</button>
+                <button class="text-xs text-ghost hover:text-warn flex items-center gap-1.5 transition-colors"><i class="fa-regular fa-trash-can"></i> Delete</button>
+                <button onclick="showToast('Thread posted!')" class="ml-auto text-xs text-ghost hover:text-pulse flex items-center gap-1.5 transition-colors font-mono">Post now →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="sched-card bg-panel border border-border rounded-xl p-4">
+          <div class="flex gap-3">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-sky to-pulse flex items-center justify-center text-xs font-mono text-ink shrink-0">T</div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between mb-1.5">
+                <p class="text-sm font-500">@tat_codes</p>
+                <span class="text-xs font-mono text-muted flex items-center gap-1">
+                  <i class="fa-regular fa-clock"></i> Jun 20 · 12:00 PM
+                </span>
+              </div>
+              <p class="text-sm text-white leading-relaxed">PHP devs: don't sleep on Flask. I spent 3 months with both and the DX difference is real. Here's my honest take 👇</p>
+              <div class="flex items-center gap-3 mt-3">
+                <button class="text-xs text-ghost hover:text-sky flex items-center gap-1.5 transition-colors"><i class="fa-regular fa-pen-to-square"></i> Edit</button>
+                <button class="text-xs text-ghost hover:text-warn flex items-center gap-1.5 transition-colors"><i class="fa-regular fa-trash-can"></i> Delete</button>
+                <button onclick="showToast('Posted immediately!')" class="ml-auto text-xs text-ghost hover:text-pulse flex items-center gap-1.5 transition-colors font-mono">Post now →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ VIEW: DRAFTS ══════════════════════════════════════════ -->
+    <section id="view-drafts" class="view-section hidden flex-1 p-4 md:p-8 max-w-2xl w-full mx-auto">
+      <div class="mb-6">
+        <h1 class="font-display text-2xl font-800">Drafts</h1>
+        <p class="text-ghost text-sm mt-1">1 unsaved draft.</p>
+      </div>
+
+      <div class="sched-card bg-panel border border-dashed border-border rounded-xl p-4 cursor-pointer" onclick="loadDraft()">
+        <div class="flex gap-3">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-sky to-pulse flex items-center justify-center text-xs font-mono text-ink shrink-0">T</div>
+          <div class="flex-1">
+            <div class="flex items-center justify-between mb-1.5">
+              <p class="text-sm font-500">@tat_codes</p>
+              <span class="text-xs font-mono text-muted">Saved Jun 15</span>
+            </div>
+            <p class="text-sm text-ghost leading-relaxed italic">Day 183 of learning to code in public. Today I fixed a race condition in…</p>
+            <p class="text-xs text-muted mt-2 font-mono">Tap to continue editing</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ VIEW: PUBLISHED ══════════════════════════════════════ -->
+    <section id="view-published" class="view-section hidden flex-1 p-4 md:p-8 max-w-2xl w-full mx-auto">
+      <div class="mb-6">
+        <h1 class="font-display text-2xl font-800">Published</h1>
+        <p class="text-ghost text-sm mt-1">Your recent posts.</p>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <div class="bg-panel border border-border rounded-xl p-4">
+          <div class="flex gap-3">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-sky to-pulse flex items-center justify-center text-xs font-mono text-ink shrink-0">T</div>
+            <div class="flex-1">
+              <div class="flex items-center justify-between mb-1.5">
+                <p class="text-sm font-500">@tat_codes</p>
+                <span class="text-xs font-mono text-muted">Jun 14 · 8:02 AM</span>
+              </div>
+              <p class="text-sm text-white leading-relaxed">Hendo Store website is live Built with Tailwind CSS, full SEO meta tags, and a clean green brand palette. First client project during SIWES!</p>
+              <div class="flex items-center gap-5 mt-3 text-ghost text-xs font-mono">
+                <span class="flex items-center gap-1.5"><i class="fa-regular fa-heart"></i> 47</span>
+                <span class="flex items-center gap-1.5"><i class="fa-solid fa-retweet"></i> 12</span>
+                <span class="flex items-center gap-1.5"><i class="fa-regular fa-comment"></i> 8</span>
+                <span class="flex items-center gap-1.5 ml-auto"><i class="fa-regular fa-eye"></i> 1.2k</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-panel border border-border rounded-xl p-4">
+          <div class="flex gap-3">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-sky to-pulse flex items-center justify-center text-xs font-mono text-ink shrink-0">T</div>
+            <div class="flex-1">
+              <div class="flex items-center justify-between mb-1.5">
+                <p class="text-sm font-500">@tat_codes</p>
+                <span class="text-xs font-mono text-muted">Jun 12 · 11:45 AM</span>
+              </div>
+              <p class="text-sm text-white leading-relaxed">Flask sessions > shared JSON files. Learned this the hard way when Quizzer started dropping quiz state under concurrent users. Race conditions are sneaky.</p>
+              <div class="flex items-center gap-5 mt-3 text-ghost text-xs font-mono">
+                <span class="flex items-center gap-1.5"><i class="fa-regular fa-heart"></i> 83</span>
+                <span class="flex items-center gap-1.5"><i class="fa-solid fa-retweet"></i> 31</span>
+                <span class="flex items-center gap-1.5"><i class="fa-regular fa-comment"></i> 14</span>
+                <span class="flex items-center gap-1.5 ml-auto"><i class="fa-regular fa-eye"></i> 3.1k</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ─── TOAST ─────────────────────────────────────────────────── -->
+  <div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2.5 bg-panel border border-pulse/40 text-white text-sm font-500 px-4 py-3 rounded-xl shadow-xl z-50">
+    <i class="fa-solid fa-circle-check text-pulse"></i>
+    <span id="toast-msg">Tweet posted!</span>
+  </div>
+
+  <script>
+    
+    /* ── Navigation ── */
+    const views = ['compose','scheduled','drafts','published'];
+    function setView(v) {
+      views.forEach(id => {
+        document.getElementById(`view-${id}`).classList.add('hidden');
+        const btn = document.getElementById(`nav-${id}`);
+        if (btn) { btn.classList.remove('active'); btn.classList.add('text-ghost'); }
+      });
+      document.getElementById(`view-${v}`).classList.remove('hidden');
+      const activeBtn = document.getElementById(`nav-${v}`);
+      if (activeBtn) { activeBtn.classList.add('active'); activeBtn.classList.remove('text-ghost'); }
+    }
+
+    /* ── Tabs ── */
+    function setTab(t) {
+      ['single','thread'].forEach(id => {
+        document.getElementById(`panel-${id}`).classList.remove('active');
+        document.getElementById(`tab-${id}`).classList.remove('active','text-white','border-pulse');
+        document.getElementById(`tab-${id}`).classList.add('text-ghost');
+      });
+      document.getElementById(`panel-${t}`).classList.add('active');
+      document.getElementById(`tab-${t}`).classList.add('active','text-white','border-pulse');
+      document.getElementById(`tab-${t}`).classList.remove('text-ghost');
+    }
+
+    /* ── Character counter ── */
+    function updateChar() {
+      const txt = document.getElementById('tweet-text').value;
+      const remaining = 280 - txt.length;
+      const used = txt.length;
+      const pct = Math.min((used / 280) * 100, 100);
+      const ring = document.getElementById('char-ring');
+      const counter = document.getElementById('char-count');
+      ring.style.setProperty('--pct', pct + '%');
+      ring.classList.toggle('warn-zone', remaining < 20);
+      counter.textContent = remaining;
+      counter.classList.toggle('text-warn', remaining < 20);
+      counter.classList.toggle('text-ghost', remaining >= 20);
+    }
+
+    /* ── Schedule toggle ── */
+    let scheduleOpen = false;
+    function toggleSchedule() {
+      scheduleOpen = !scheduleOpen;
+      const row = document.getElementById('schedule-row');
+      const label = document.getElementById('sched-btn-label');
+      const btn = document.getElementById('schedule-toggle-btn');
+      row.classList.toggle('hidden', !scheduleOpen);
+      label.textContent = scheduleOpen ? 'Cancel' : 'Schedule';
+      btn.classList.toggle('border-pulse', scheduleOpen);
+      btn.classList.toggle('text-pulse', scheduleOpen);
+      if (scheduleOpen) {
+        // Default to tomorrow 9 AM
+        const d = new Date(); d.setDate(d.getDate() + 1);
+        document.getElementById('sched-date').value = d.toISOString().split('T')[0];
+        document.getElementById('sched-time').value = '09:00';
+      }
+    }
+
+    /* ── Post tweet ── */
+    function postTweet() {
+      const text = document.getElementById('tweet-text').value.trim();
+      if (!text) { showToast('Write something first', true); return; }
+      if (scheduleOpen) {
+        const date = document.getElementById('sched-date').value;
+        const time = document.getElementById('sched-time').value;
+        if (!date || !time) { showToast('Pick a date and time', true); return; }
+        const formatted = new Date(`${date}T${time}`).toLocaleString('en-NG', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+        showToast(`Scheduled for ${formatted}`);
+        const count = document.getElementById('sched-count');
+        count.textContent = parseInt(count.textContent) + 1;
+      } else {
+        showToast('Tweet posted!');
+      }
+      document.getElementById('tweet-text').value = '';
+      updateChar();
+    }
+
+    /* ── AI draft ── */
+    const suggestions = [
+      "Day 183 of learning in public 🧵 The one debugging lesson that changed everything for me: the bug is almost never where you think it is.",
+      "Hot take: documentation is the most underrated skill in software engineering. A project without clear docs is just a future mystery.",
+      "I used to think consistency meant coding every day. Now I think it means showing up — even if it's just 15 minutes of reading docs.",
+      "Shipped something today that I broke three times before it worked. That's not failure, that's the job. 🚀",
+    ];
+    let aiIdx = 0;
+    function aiDraft() {
+      const box = document.getElementById('ai-box');
+      const sugg = document.getElementById('ai-suggestion');
+      sugg.textContent = suggestions[aiIdx % suggestions.length];
+      aiIdx++;
+      box.classList.remove('hidden');
+    }
+    function useAiSuggestion() {
+      const sugg = document.getElementById('ai-suggestion').textContent;
+      document.getElementById('tweet-text').value = sugg;
+      updateChar();
+      document.getElementById('ai-box').classList.add('hidden');
+    }
+
+    /* ── Load draft ── */
+    function loadDraft() {
+      setView('compose');
+      const draft = "Day 183 of learning to code in public. Today I fixed a race condition in Quizzer by switching from shared JSON to Flask sessions. Small win, big lesson 🧠";
+      document.getElementById('tweet-text').value = draft;
+      updateChar();
+    }
+
+    /* ── Thread: add tweet ── */
+    function addThreadTweet() {
+      const container = document.getElementById('thread-container');
+      const n = container.querySelectorAll('.thread-item').length + 1;
+      const div = document.createElement('div');
+      div.className = 'flex gap-3 thread-item';
+      div.innerHTML = `
+        <div class="flex flex-col items-center">
+          <div class="w-9 h-9 rounded-full bg-gradient-to-br from-sky to-pulse flex items-center justify-center text-xs font-mono font-500 text-ink shrink-0">T</div>
+          <div class="thread-connector flex-1 mt-2 ml-px" style="min-height:24px"></div>
+        </div>
+        <div class="flex-1 pb-3">
+          <p class="text-sm font-500 mb-2">@tat_codes</p>
+          <textarea class="compose-area w-full bg-transparent text-white text-base resize-none placeholder-muted border border-border rounded-lg p-3 font-body leading-relaxed min-h-[80px]" placeholder="Tweet ${n}…" maxlength="280"></textarea>
+          <div class="flex justify-end mt-1.5"><span class="text-xs font-mono text-muted">280</span></div>
+        </div>`;
+      container.appendChild(div);
+    }
+
+    /* ── Toast ── */
+    let toastTimer;
+    function showToast(msg, isError = false) {
+      const t = document.getElementById('toast');
+      const m = document.getElementById('toast-msg');
+      const icon = t.querySelector('i');
+      m.textContent = msg;
+      icon.className = isError ? 'fa-solid fa-circle-exclamation text-warn' : 'fa-solid fa-circle-check text-pulse';
+      t.classList.remove('hidden');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.add('hidden'), 3000);
+    }
+
+    // Init date placeholder
+    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+    if (document.getElementById('sched-date')) {
+      document.getElementById('sched-date').min = tomorrow.toISOString().split('T')[0];
+    }
+
+    toggleSchedule()
+
+
+    /* ── Mobile menu ── */
+function toggleMobileMenu() {
+  const menu = document.getElementById('mobile-menu');
+  const icon = document.getElementById('menu-icon');
+  const isHidden = menu.classList.contains('hidden');
+  menu.classList.toggle('hidden', !isHidden);
+  icon.className = isHidden ? 'fa-solid fa-xmark' : 'fa-solid fa-bars';
+}
+
+function closeMobileMenu() {
+  document.getElementById('mobile-menu').classList.add('hidden');
+  document.getElementById('menu-icon').className = 'fa-solid fa-bars';
+}
+  </script>
+</body>
+</html>

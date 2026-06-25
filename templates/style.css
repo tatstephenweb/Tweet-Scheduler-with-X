@@ -1,0 +1,61 @@
+    * { box-sizing: border-box; }
+    body { background: #0D0D0F; font-family: 'Inter', sans-serif; }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #27272E; border-radius: 4px; }
+
+    /* Signature glow on the compose textarea */
+    .compose-area:focus {
+      outline: none;
+      box-shadow: 0 0 0 1.5px #4DFFC3, 0 0 24px 0 rgba(77,255,195,0.08);
+    }
+
+    /* Character ring */
+    .char-ring {
+      --pct: 0%;
+      background: conic-gradient(#4DFFC3 var(--pct), #27272E var(--pct));
+      border-radius: 50%;
+    }
+    .char-ring.warn-zone { background: conic-gradient(#FF6B6B var(--pct), #27272E var(--pct)); }
+
+    /* Tab underline */
+    .tab-btn.active { color: #4DFFC3; border-bottom: 2px solid #4DFFC3; }
+
+    /* Sidebar nav item */
+    .nav-item { transition: background 0.15s, color 0.15s; }
+    .nav-item:hover, .nav-item.active { background: #18181C; color: #fff; }
+    .nav-item.active .nav-icon { color: #4DFFC3; }
+
+    /* Status dot pulse */
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .status-dot { animation: blink 2s ease-in-out infinite; }
+
+    /* Scheduled card hover */
+    .sched-card { transition: border-color 0.2s, background 0.2s; }
+    .sched-card:hover { border-color: #52525E; background: #1E1E23; }
+
+    /* Toast */
+    #toast { transition: opacity 0.3s, transform 0.3s; }
+    #toast.hidden { opacity: 0; transform: translateY(8px); pointer-events: none; }
+
+    /* Slide in tabs content */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Post now button shimmer */
+    .post-btn {
+      background: linear-gradient(135deg, #1D9BF0 0%, #0D7ACC 100%);
+      transition: filter 0.2s, transform 0.1s;
+    }
+    .post-btn:hover { filter: brightness(1.12); }
+    .post-btn:active { transform: scale(0.97); }
+
+    .schedule-btn {
+      border: 1.5px solid #27272E;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .schedule-btn:hover { border-color: #4DFFC3; color: #4DFFC3; }
+
+    /* Thread line connector */

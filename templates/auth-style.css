@@ -1,0 +1,46 @@
+* { box-sizing: border-box; }
+body { background: #FFF; font-family: 'Inter', sans-serif; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #E3E3E9; border-radius: 4px; }
+
+    .glow-bg {
+      background:
+        radial-gradient(55% 45% at 20% 0%, #1d9bf012 0%, rgba(246,246,248,0) 70%),
+        radial-gradient(45% 40% at 90% 100%, rgba(15,191,143,0.08) 0%, rgba(246,246,248,0) 70%);
+    }
+
+    .grad-text {
+      background: linear-gradient(100deg, #0FBF8F 0%, #1D9BF0 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+
+    .post-btn { background: linear-gradient(135deg, #1D9BF0 0%, #0D7ACC 100%); box-shadow: 0 8px 20px -8px rgba(29,155,240,0.45); transition: filter .2s, transform .1s, box-shadow .2s; }
+    .post-btn:hover { filter: brightness(1.07); box-shadow: 0 10px 24px -8px rgba(29,155,240,0.55); }
+    .post-btn:active { transform: scale(0.97); }
+    .post-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: none; box-shadow: none; }
+
+    .schedule-btn { border: 1.5px solid #E3E3E9; transition: border-color .2s, color .2s, background .2s; }
+    .schedule-btn:hover { border-color: #0FBF8F; color: #0FBF8F; background: rgba(15,191,143,0.05); }
+
+    .field { background: #FFFFFF; border: 1px solid #E3E3E9; color: #101014; transition: border-color .15s, box-shadow .15s; }
+    .field::placeholder { color: #9B9BA6; }
+    .field:focus { outline: none; border-color: #0FBF8F; box-shadow: 0 0 0 3px rgba(15,191,143,0.12); }
+    .field.err { border-color: #E5484D; }
+
+    .auth-tab { transition: color .15s, border-color .15s; color: #6B6B76; }
+    .auth-tab.active { color: #101014; border-bottom: 2px solid #0FBF8F; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: flex; }
+
+    .strength-seg { background: #E3E3E9; transition: background .25s; }
+    .strength-seg.on-1 { background: #E5484D; }
+    .strength-seg.on-2 { background: #F0A93B; }
+    .strength-seg.on-3 { background: #0FBF8F; }
+
+    .status-dot { animation: blink 2s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+    .checkbox { accent-color: #0FBF8F; }

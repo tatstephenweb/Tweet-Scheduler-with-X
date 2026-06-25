@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Poster — Schedule and post to X, on your terms</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink:     '#0D0D0F',
+            surface: '#111114',
+            panel:   '#18181C',
+            border:  '#27272E',
+            muted:   '#52525E',
+            ghost:   '#A0A0B0',
+            sky:     '#1D9BF0',
+            skyDim:  '#155E8F',
+            pulse:   '#4DFFC3',
+            warn:    '#FF6B6B',
+          },
+          fontFamily: {
+            display: ['Syne', 'sans-serif'],
+            body:    ['Inter', 'sans-serif'],
+            mono:    ['DM Mono', 'monospace'],
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { background: #0D0D0F; font-family: 'Inter', sans-serif; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #27272E; border-radius: 4px; }
+
+    /* Hero glow */
+    .glow-bg {
+      background: radial-gradient(60% 50% at 50% 0%, rgba(29,155,240,0.16) 0%, rgba(13,13,15,0) 70%),
+                  radial-gradient(40% 35% at 85% 15%, rgba(77,255,195,0.10) 0%, rgba(13,13,15,0) 70%);
+    }
+
+    /* Mockup card glow */
+    .mockup-card { box-shadow: 0 0 0 1px #27272E, 0 30px 60px -20px rgba(0,0,0,0.6); }
+    .mockup-card:focus-within,
+    .mockup-card.glowing { box-shadow: 0 0 0 1px #4DFFC3, 0 0 40px 0 rgba(77,255,195,0.10), 0 30px 60px -20px rgba(0,0,0,0.6); }
+
+    .char-ring { background: conic-gradient(#4DFFC3 58%, #27272E 58%); border-radius: 50%; }
+
+    /* Gradient text accent */
+    .grad-text {
+      background: linear-gradient(100deg, #4DFFC3 0%, #1D9BF0 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+
+    /* Primary / secondary buttons (shared with dashboard) */
+    .post-btn { background: linear-gradient(135deg, #1D9BF0 0%, #0D7ACC 100%); transition: filter .2s, transform .1s; }
+    .post-btn:hover { filter: brightness(1.12); }
+    .post-btn:active { transform: scale(0.97); }
+    .schedule-btn { border: 1.5px solid #27272E; transition: border-color .2s, color .2s, background .2s; }
+    .schedule-btn:hover { border-color: #4DFFC3; color: #4DFFC3; }
+
+    /* Feature card hover */
+    .feat-card { transition: border-color .2s, transform .2s; }
+    .feat-card:hover { border-color: #52525E; transform: translateY(-2px); }
+
+    /* Step connector line */
+    .step-line { background: linear-gradient(180deg, #27272E 0%, transparent 100%); }
+    @media (min-width: 1024px) {
+      .step-line { background: linear-gradient(90deg, #27272E 0%, transparent 100%); }
+    }
+
+    /* Mobile menu */
+    #mobile-menu { transition: max-height .25s ease, opacity .2s ease; display: none;}
+    @media (max-width: 700px) {
+      #mobile-menu{display: none;}
+    }
+    #mobile-menu.open { max-height: 280px; opacity: 1; }
+
+    /* Modal */
+    #auth-modal { transition: opacity .2s ease; }
+    #auth-modal.hidden { opacity: 0; pointer-events: none; }
+    #auth-modal .modal-card { transition: transform .2s ease, opacity .2s ease; }
+    #auth-modal.hidden .modal-card { transform: translateY(8px) scale(0.98); opacity: 0; }
+
+    .auth-tab.active { color: #fff; border-bottom: 2px solid #4DFFC3; }
+
+    input.field { background: #0D0D0F; border: 1px solid #27272E; }
+    input.field:focus { outline: none; border-color: #4DFFC3; }
+
+    .status-dot { animation: blink 2s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  </style>
+</head>
+<body class="text-white antialiased">
+
+  <!-- ─── NAV ──────────────────────────────────────────────────── -->
+  <header class="sticky top-0 z-40 border-b border-border bg-ink/90 backdrop-blur-md">
+    <div class="max-w-6xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <img src="{{ url_for('static', filename='images/logo-blue.png') }}" alt="logo" style="width:50px">
+        <span class="font-display font-800 text-lg tracking-tight">MaskMan</span>
+      </div>
+
+      <nav class="hidden md:flex items-center gap-8">
+        <a href="#features" class="text-sm text-ghost hover:text-white transition-colors">Features</a>
+        <a href="#how-it-works" class="text-sm text-ghost hover:text-white transition-colors">How it works</a>
+        <a href="#faq" class="text-sm text-ghost hover:text-white transition-colors">FAQ</a>
+      </nav>
+
+      <div class="hidden md:flex items-center gap-3">
+        <a href="/login" class="text-sm font-500 text-ghost hover:text-white transition-colors px-3 py-2">Log in</a>
+        <a href="/create-account" class="post-btn text-sm font-600 text-white px-4 py-2 rounded-lg">Create account</a>
+      </div>
+
+      <button onclick="toggleMobileMenu()" id="menu-btn" class="md:hidden text-xl text-ghost">
+        <i class="fa-solid fa-bars" id="btn-icon"></i>
+      </button>
+    </div>
+
+    <!-- Mobile menu -->
+    <div id="mobile-menu" class="border-t border-border px-4">
+      <div class="flex flex-col gap-1 py-3">
+        <a href="#features" class="text-sm text-ghost hover:text-white py-2.5">Features</a>
+        <a href="#how-it-works" class="text-sm text-ghost hover:text-white py-2.5">How it works</a>
+        <a href="#faq" class="text-sm text-ghost hover:text-white py-2.5">FAQ</a>
+        <div class="flex gap-2.5 pt-2 pb-1">
+          <a href="/login" class="schedule-btn flex-1 text-sm font-500 text-ghost py-2.5 rounded-lg">Log in</a>
+          <a href="/create-account" class="post-btn flex-1 text-sm font-600 text-white py-2.5 rounded-lg">Create account</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ─── HERO ───────────────────────────────────────────────── -->
+    <section class="glow-bg relative px-4 md:px-8 pt-14 md:pt-20 pb-16 md:pb-24">
+      <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
+
+        <!-- Copy -->
+        <div>
+
+          <h1 class="font-display text-4xl sm:text-5xl lg:text-[3.4rem] font-800 leading-[1.05] tracking-tight">
+            Write once.<br/>
+            Post on <span class="grad-text">your</span> schedule.
+          </h1>
+
+          <p class="text-ghost text-base sm:text-lg leading-relaxed mt-5 max-w-md">
+            MaskMan connects to your <i class="fa-brands fa-x-twitter"></i> account and handles the rest. Drafting, scheduling and AI-assisted writing, all from one dashboard.
+          </p>
+
+          <div class="flex flex-col sm:flex-row gap-3 mt-8">
+            <a href="/create-account" onclick="openAuth('signup')" class="post-btn flex items-center justify-center gap-2 text-sm font-600 text-white px-6 py-3.5 rounded-xl">
+               Create free account
+            </a>
+            <a href="/login" class="schedule-btn flex items-center justify-center gap-2 text-sm font-500 text-ghost px-6 py-3.5 rounded-xl">
+              Log in
+            </a>
+          </div>
+
+        </div>
+
+        <!-- Mockup -->
+        <div class="relative">
+          <div class="mockup-card glowing bg-panel border border-border rounded-2xl p-5 max-w-md mx-auto">
+            <div class="flex gap-3">
+              <div class="w-9 h-9 rounded-full bg-gradient-to-br from-sky to-pulse flex items-center justify-center text-xs font-mono font-500 text-ink shrink-0">T</div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-500 mb-2">@tat_codes</p>
+                <p class="text-base leading-relaxed text-white border border-border rounded-lg p-3 bg-ink">
+                  Day 183 of learning to code in public. Today I shipped a tweet scheduler so I never forget to post again
+                </p>
+                <div class="flex items-center justify-between mt-3">
+                  <div class="flex items-center gap-3 text-ghost text-base">
+                    <!--<i class="fa-regular fa-image"></i>
+                    <i class="fa-solid fa-film"></i>
+                    <i class="fa-solid fa-wand-magic-sparkles text-pulse"></i>-->
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <div class="char-ring w-5 h-5 relative">
+                      <div class="absolute inset-1 bg-panel rounded-full"></div>
+                    </div>
+                    <span class="text-xs font-mono text-ghost">118</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 mt-4 pt-4 border-t border-border">
+              <i class="fa-regular fa-clock text-ghost text-xs"></i>
+              <span class="text-xs font-mono text-ghost">Scheduled · Tomorrow, 9:00 AM</span>
+              <span class="ml-auto text-xs font-mono text-pulse flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-pulse inline-block"></span> Queued
+              </span>
+            </div>
+          </div>
+
+          <!-- Floating badge -->
+          <div class="hidden sm:flex absolute -bottom-5 -left-5 bg-surface border border-border rounded-xl px-4 py-3 items-center gap-3 shadow-xl">
+            <i class="fa-solid fa-circle-check text-pulse"></i>
+            <div>
+              <p class="text-xs font-500 text-white leading-none">Hendo Store post</p>
+              <p class="text-xs text-muted font-mono mt-1">Posted</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- ─── FEATURES ───────────────────────────────────────────── -->
+    <section id="features" class="px-4 md:px-8 py-20 md:py-28">
+      <div class="max-w-6xl mx-auto">
+        <div class="max-w-lg mb-12">
+          <p class="text-xs font-mono text-pulse uppercase tracking-widest mb-3">Features</p>
+          <h2 class="font-display text-3xl sm:text-4xl font-800 leading-tight">Everything you need to stay consistent on X</h2>
+        </div>
+
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="feat-card bg-panel border border-border rounded-2xl p-5">
+            <div class="w-10 h-10 rounded-lg bg-sky/10 flex items-center justify-center mb-4">
+              <i class="fa-regular fa-clock text-sky"></i>
+            </div>
+            <h3 class="font-display font-700 text-base mb-2">Schedule posts</h3>
+            <p class="text-sm text-ghost leading-relaxed">Queue tweets for any date and time. Poster posts them automatically — even while you sleep.</p>
+          </div>
+
+          <div class="feat-card bg-panel border border-border rounded-2xl p-5">
+            <div class="w-10 h-10 rounded-lg bg-pulse/10 flex items-center justify-center mb-4">
+              <i class="fa-solid fa-link text-pulse"></i>
+            </div>
+            <h3 class="font-display font-700 text-base mb-2">Thread builder</h3>
+            <p class="text-sm text-ghost leading-relaxed">Chain multiple tweets into a thread with one click. Reorder, edit, and post the whole sequence at once.</p>
+            <button class="text-pulse rounded-lg bg-pulse/10 p-2 text-xs mt-3">Coming soon</button>
+          </div>
+
+          <div class="feat-card bg-panel border border-border rounded-2xl p-5">
+            <div class="w-10 h-10 rounded-lg bg-sky/10 flex items-center justify-center mb-4">
+              <i class="fa-solid fa-wand-magic-sparkles text-sky"></i>
+            </div>
+            <h3 class="font-display font-700 text-base mb-2">AI drafting</h3>
+            <p class="text-sm text-ghost leading-relaxed">Stuck on what to say? Get instant tweet suggestions based on your voice and topic.</p>
+            <button class="text-sky rounded-lg bg-sky/10 p-2 text-xs mt-3">Coming soon</button>
+          </div>
+
+          <div class="feat-card bg-panel border border-border rounded-2xl p-5">
+            <div class="w-10 h-10 rounded-lg bg-pulse/10 flex items-center justify-center mb-4">
+              <i class="fa-solid fa-chart-line text-pulse"></i>
+            </div>
+            <h3 class="font-display font-700 text-base mb-2">Engagement tracking</h3>
+            <p class="text-sm text-ghost leading-relaxed">See likes, retweets, replies, and views on every post you publish through Poster.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── HOW IT WORKS ───────────────────────────────────────── -->
+    <section id="how-it-works" class="px-4 md:px-8 py-20 md:py-28 bg-surface border-y border-border">
+      <div class="max-w-6xl mx-auto">
+        <div class="max-w-lg mb-14">
+          <p class="text-xs font-mono text-pulse uppercase tracking-widest mb-3">How it works</p>
+          <h2 class="font-display text-3xl sm:text-4xl font-800 leading-tight">Three steps. No code required.</h2>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-10 lg:gap-6">
+          <div class="relative">
+            <div class="flex lg:flex-col items-start gap-4">
+              <span class="font-display text-2xl font-800 text-pulse shrink-0">01</span>
+              <div class="flex-1 lg:mt-3">
+                <h3 class="font-display font-700 text-lg mb-2">Create your account</h3>
+                <p class="text-sm text-ghost leading-relaxed">Sign up with email, then connect your X account through a secure, one-time authorization.</p>
+              </div>
+            </div>
+            <div class="step-line h-full w-px absolute left-3 top-10 lg:hidden"></div>
+          </div>
+
+          <div class="relative">
+            <div class="flex lg:flex-col items-start gap-4">
+              <span class="font-display text-2xl font-800 text-pulse shrink-0">02</span>
+              <div class="flex-1 lg:mt-3">
+                <h3 class="font-display font-700 text-lg mb-2">Write or generate a draft</h3>
+                <p class="text-sm text-ghost leading-relaxed">Compose a single tweet or a full thread. Use AI assist if you need a starting point.</p>
+              </div>
+            </div>
+            <div class="step-line h-full w-px absolute left-3 top-10 lg:hidden"></div>
+          </div>
+
+          <div>
+            <div class="flex lg:flex-col items-start gap-4">
+              <span class="font-display text-2xl font-800 text-pulse shrink-0">03</span>
+              <div class="flex-1 lg:mt-3">
+                <h3 class="font-display font-700 text-lg mb-2">Post now or schedule</h3>
+                <p class="text-sm text-ghost leading-relaxed">Publish instantly or pick a date and time. Poster handles the rest, automatically.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── FAQ ────────────────────────────────────────────────── -->
+    <section id="faq" class="px-4 md:px-8 py-20 md:py-28">
+      <div class="max-w-3xl mx-auto">
+        <p class="text-xs font-mono text-pulse uppercase tracking-widest mb-3">FAQ</p>
+        <h2 class="font-display text-3xl sm:text-4xl font-800 leading-tight mb-12">Good to know</h2>
+
+        <div class="flex flex-col divide-y divide-border border-t border-border">
+          <details class="group py-5">
+            <summary class="flex items-center justify-between cursor-pointer list-none">
+              <span class="font-500 text-base">Does MaskMan need my X password?</span>
+              <i class="fa-solid fa-plus text-ghost text-sm group-open:rotate-45 transition-transform"></i>
+            </summary>
+            <p class="text-sm text-ghost leading-relaxed mt-3 max-w-xl">No. MaskMan never sees or stores your password. You authorize access directly through X's official login screen, and you can revoke it anytime from your X settings.</p>
+          </details>
+
+          <details class="group py-5">
+            <summary class="flex items-center justify-between cursor-pointer list-none">
+              <span class="font-500 text-base">How many tweets can I schedule?</span>
+              <i class="fa-solid fa-plus text-ghost text-sm group-open:rotate-45 transition-transform"></i>
+            </summary>
+            <p class="text-sm text-ghost leading-relaxed mt-3 max-w-xl">The free plan includes up to 1,500 posts per month, matching X's free API tier. Higher tiers are available if you need more.</p>
+          </details>
+
+          <!--<details class="group py-5">
+            <summary class="flex items-center justify-between cursor-pointer list-none">
+              <span class="font-500 text-base">Can I connect more than one X account?</span>
+              <i class="fa-solid fa-plus text-ghost text-sm group-open:rotate-45 transition-transform"></i>
+            </summary>
+            <p class="text-sm text-ghost leading-relaxed mt-3 max-w-xl">Yes. You can link multiple accounts and switch between them from your dashboard before composing or scheduling a post.</p>
+          </details>-->
+
+          <details class="group py-5">
+            <summary class="flex items-center justify-between cursor-pointer list-none">
+              <span class="font-500 text-base">What happens if X is down when a post is due?</span>
+              <i class="fa-solid fa-plus text-ghost text-sm group-open:rotate-45 transition-transform"></i>
+            </summary>
+            <p class="text-sm text-ghost leading-relaxed mt-3 max-w-xl">Poster retries automatically and notifies you if a scheduled post fails to send after several attempts.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── FINAL CTA ──────────────────────────────────────────── -->
+    <section class="px-4 md:px-8 py-20 md:py-24">
+      <div class="max-w-6xl mx-auto glow-bg border border-border rounded-3xl px-6 md:px-16 py-14 md:py-16 text-center bg-panel">
+        <h2 class="font-display text-3xl sm:text-4xl font-800 leading-tight mb-4">Ready to stay consistent on X?</h2>
+        <p class="text-ghost text-base max-w-md mx-auto mb-8">Create your free account and connect X in under a minute.</p>
+        <a href="/create-account" class="post-btn inline-flex items-center justify-center gap-2 text-sm font-600 text-white px-7 py-3.5 rounded-xl">
+          Create account
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function toggleMobileMenu(){
+      if (document.getElementById("mobile-menu").style.display == "block"){
+        document.getElementById("mobile-menu").style.display = "none";
+      }
+      else{
+        document.getElementById("mobile-menu").style.display = "block";
+      }
+    }
+  </script>
+</body>
+</html>
